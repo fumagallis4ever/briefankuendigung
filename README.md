@@ -1,12 +1,5 @@
 # Briefankündigung (WEB.DE / GMX) für Home Assistant
 
-[![Öffne dein Home Assistant und füge dieses Repository in HACS hinzu.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=fumagallis4ever&repository=briefankuendigung&category=integration)
-
-[![Öffne dein Home Assistant und starte die Einrichtung der Integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=briefankuendigung)
-
-[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz)
-[![Validate](https://github.com/fumagallis4ever/briefankuendigung/actions/workflows/validate.yml/badge.svg)](https://github.com/fumagallis4ever/briefankuendigung/actions/workflows/validate.yml)
-
 Holt die **Briefankündigung der Deutschen Post** aus deinem WEB.DE- oder GMX-Postfach und zeigt in Home Assistant an, welche Briefe unterwegs sind – mit Absender, Datum und Umschlagbild.
 
 *English summary below.*
@@ -34,6 +27,10 @@ Holt die **Briefankündigung der Deutschen Post** aus deinem WEB.DE- oder GMX-Po
 1. HACS → **⋮** → **Benutzerdefinierte Repositories**
 2. URL `https://github.com/fumagallis4ever/briefankuendigung`, Typ **Integration**
 3. „Briefankündigung“ suchen, installieren und Home Assistant neu starten
+
+[![Öffne dein Home Assistant und füge dieses Repository in HACS hinzu.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=fumagallis4ever&repository=briefankuendigung&category=integration)
+
+[![Öffne dein Home Assistant und starte die Einrichtung der Integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=briefankuendigung)
 
 ### Manuell
 
