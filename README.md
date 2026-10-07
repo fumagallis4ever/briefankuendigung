@@ -50,73 +50,19 @@ Für weitere Postfächer die Integration einfach noch einmal hinzufügen.
 
 ## Entitäten
 
+Diese Entitäten legt die Integration bei der Einrichtung **automatisch** an, du musst nichts selbst erstellen:
+
 | Entität | Beschreibung |
 |---|---|
 | `sensor.briefankundigung_letzter_brief` | Absender des zuletzt angekündigten Briefs. Attribute: `datum`, `bild`, `anzahl`, `briefe` (Liste der letzten 10) |
 | `image.briefankundigung_umschlag` | Umschlagbild des letzten Briefs |
 
-Weitere Postfächer erhalten die Endung `_2`, `_3` usw.
+Richtest du mehrere Postfächer ein, bekommen die weiteren Entitäten die Endung `_2`, `_3` usw. Die genauen Namen findest du unter *Einstellungen → Geräte & Dienste → Briefankündigung → Entitäten*.
 
 Die Umschlagbilder werden zusätzlich unter `/local/briefe/` gespeichert, damit sie z. B. in Push-Nachrichten verwendet werden können.
 
-## Event
+### Optional: Hilfssensor „Brief angekündigt“
 
-Bei jeder neuen Ankündigung wird das Event `briefankuendigung_neu` ausgelöst:
+Soll eine Dashboard-Karte nur erscheinen, wenn heute oder gestern ein Brief angekündigt wurde, brauchst du zusätzlich einen Template-Hilfssensor. Den musst du **selbst anlegen**:
 
-| Feld | Beispiel |
-|---|---|
-| `absender` | `Stadtwerke Musterstadt` |
-| `datum` | `07.10.2026 01:05` |
-| `bild` | `/local/briefe/brief_name_1234.jpg` |
-| `konto` | `name@web.de` |
-
-Beim allerersten Abruf werden die Ankündigungen der letzten 7 Tage übernommen, ohne Events auszulösen.
-
-### Beispiel: Push-Nachricht mit Umschlagbild
-
-```yaml
-alias: Briefankündigung – Push-Nachricht
-triggers:
-  - trigger: event
-    event_type: briefankuendigung_neu
-actions:
-  - action: notify.mobile_app_dein_handy
-    data:
-      title: "📬 Brief unterwegs"
-      message: "Von {{ trigger.event.data.absender }} – kommt in den nächsten Tagen."
-      data:
-        image: "{{ trigger.event.data.bild }}"
-mode: queued
-```
-
-Nur für ein bestimmtes Postfach: im Trigger `event_data: {konto: name@web.de}` ergänzen.
-
-### Beispiel: Dashboard-Karte
-
-```yaml
-type: markdown
-content: |-
-  {%- set briefe = state_attr('sensor.briefankundigung_letzter_brief', 'briefe') or [] -%}
-  <table width="100%">
-  <tr><th align="left" width="30%">Eingang</th><th align="left">Absender</th></tr>
-  {%- for b in briefe %}
-  <tr><td>{{ (b.datum or '').split(' ')[0] }}</td><td>{{ b.absender }}</td></tr>
-  {%- endfor %}
-  </table>
-```
-
-## Hinweise
-
-- Abfrageintervall: alle 5 Minuten.
-- Steht der Absender nicht im Text der Ankündigung, zeigt der Sensor „Unbekannt“. Er ist dann meist auf dem Umschlagbild zu sehen.
-- Dieses Projekt steht in keiner Verbindung zur Deutschen Post, zu WEB.DE oder GMX.
-
----
-
-## English summary
-
-Home Assistant integration that reads the *Briefankündigung* (letter announcement) service of Deutsche Post from a WEB.DE or GMX mailbox via IMAP. It provides a sensor with the sender of the latest announced letter (plus the last 10 as attributes), an image entity with the envelope scan, and fires a `briefankuendigung_neu` event for each new announcement. Setup is done in the UI; multiple mailboxes are supported. Only available in Germany.
-
-## Lizenz
-
-MIT
+*Einstellu
