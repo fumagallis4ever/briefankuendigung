@@ -1,0 +1,12 @@
+{
+  "domain": "briefankuendigung",
+  "name": "Briefankündigung (WEB.DE/GMX)",
+  "codeowners": ["@fumagallis4ever"],
+  "config_flow": true,
+  "documentation": "https://github.com/fumagallis4ever/briefankuendigung",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/fumagallis4ever/briefankuendigung/issues",
+  "requirements": [],
+  "version": "1.1.0"
+}

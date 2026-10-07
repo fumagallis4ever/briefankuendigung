@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Briefankündigung (WEB.DE / GMX)",
+        "description": "Zugangsdaten des Postfachs mit aktivierter Briefankündigung. IMAP muss im Postfach freigeschaltet sein. Für GMX: imap.gmx.net",
+        "data": {
+          "server": "IMAP-Server",
+          "username": "E-Mail-Adresse",
+          "password": "Passwort"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Anmeldung fehlgeschlagen – Zugangsdaten und IMAP-Freigabe prüfen.",
+      "cannot_connect": "Verbindung zum Server nicht möglich."
+    },
+    "abort": {
+      "already_configured": "Dieses Postfach ist bereits eingerichtet."
+    }
+  }
+}
