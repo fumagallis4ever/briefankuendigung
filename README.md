@@ -65,4 +65,83 @@ Die Umschlagbilder werden zusätzlich unter `/local/briefe/` gespeichert, damit 
 
 Soll eine Dashboard-Karte nur erscheinen, wenn heute oder gestern ein Brief angekündigt wurde, brauchst du zusätzlich einen Template-Hilfssensor. Den musst du **selbst anlegen**:
 
-*Einstellu
+*Einstellungen → Geräte & Dienste → Helfer → Helfer erstellen → Template → Template-Binärsensor*
+
+- **Name:** `Brief angekündigt`
+- **Zustandstemplate:**
+
+```jinja
+{%- set ab = (now() - timedelta(days=1)).date() -%}
+{%- set ns = namespace(an=false) -%}
+{%- for b in state_attr('sensor.briefankundigung_letzter_brief', 'briefe') or [] -%}
+{%- set t = strptime((b.datum or '').split(' ')[0], '%d.%m.%Y', none) -%}
+{%- if t is not none and t.date() >= ab %}{% set ns.an = true %}{% endif -%}
+{%- endfor -%}
+{{ ns.an }}
+```
+
+Bei mehreren Postfächern trägst du in der Zeile mit `for b in` alle Sensoren ein, z. B. `(state_attr('sensor.briefankundigung_letzter_brief', 'briefe') or []) + (state_attr('sensor.briefankundigung_letzter_brief_2', 'briefe') or [])`.
+
+In der Dashboard-Karte dann unter **Sichtbarkeit** die Bedingung *Entitätszustand* → `binary_sensor.brief_angekundigt` → **An** setzen.
+
+## Event
+
+Bei jeder neuen Ankündigung wird das Event `briefankuendigung_neu` ausgelöst:
+
+| Feld | Beispiel |
+|---|---|
+| `absender` | `Stadtwerke Musterstadt` |
+| `datum` | `07.10.2026 01:05` |
+| `bild` | `/local/briefe/brief_name_1234.jpg` |
+| `konto` | `name@web.de` |
+
+Beim allerersten Abruf werden die Ankündigungen der letzten 7 Tage übernommen, ohne Events auszulösen.
+
+### Beispiel: Push-Nachricht mit Umschlagbild
+
+```yaml
+alias: Briefankündigung – Push-Nachricht
+triggers:
+  - trigger: event
+    event_type: briefankuendigung_neu
+actions:
+  - action: notify.mobile_app_dein_handy
+    data:
+      title: "📬 Brief unterwegs"
+      message: "Von {{ trigger.event.data.absender }} – kommt in den nächsten Tagen."
+      data:
+        image: "{{ trigger.event.data.bild }}"
+mode: queued
+```
+
+Nur für ein bestimmtes Postfach: im Trigger `event_data: {konto: name@web.de}` ergänzen.
+
+### Beispiel: Dashboard-Karte
+
+```yaml
+type: markdown
+content: |-
+  {%- set briefe = state_attr('sensor.briefankundigung_letzter_brief', 'briefe') or [] -%}
+  <table width="100%">
+  <tr><th align="left" width="30%">Eingang</th><th align="left">Absender</th></tr>
+  {%- for b in briefe %}
+  <tr><td>{{ (b.datum or '').split(' ')[0] }}</td><td>{{ b.absender }}</td></tr>
+  {%- endfor %}
+  </table>
+```
+
+## Hinweise
+
+- Abfrageintervall: alle 5 Minuten.
+- Steht der Absender nicht im Text der Ankündigung, zeigt der Sensor „Unbekannt“. Er ist dann meist auf dem Umschlagbild zu sehen.
+- Dieses Projekt steht in keiner Verbindung zur Deutschen Post, zu WEB.DE oder GMX.
+
+---
+
+## English summary
+
+Home Assistant integration that reads the *Briefankündigung* (letter announcement) service of Deutsche Post from a WEB.DE or GMX mailbox via IMAP. It provides a sensor with the sender of the latest announced letter (plus the last 10 as attributes), an image entity with the envelope scan, and fires a `briefankuendigung_neu` event for each new announcement. Setup is done in the UI; multiple mailboxes are supported. Only available in Germany.
+
+## Lizenz
+
+MIT
