@@ -1,5 +1,6 @@
 import email
 import email.utils
+from email.header import decode_header, make_header
 import html
 import imaplib
 import logging
@@ -20,6 +21,54 @@ from .const import ABSENDER, CONF_SERVER, DOMAIN, EVENT_NEU, MAX_BRIEFE, SCAN_IN
 _LOGGER = logging.getLogger(__name__)
 MONATE = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
           "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+
+# Formulierungen, in denen die Deutsche Post den Absender nennt
+_MUSTER_FLIESSTEXT = [
+    re.compile(r"Brief von\s+(.+?)\s+(?:ist|wird|kommt|wurde)\b", re.I),
+    re.compile(r"Sendung von\s+(.+?)\s+(?:ist|wird|kommt|wurde)\b", re.I),
+]
+_MUSTER_ZEILE = re.compile(r"^\s*Absender\s*:\s*(.+?)\s*$", re.I | re.M)
+
+
+def _text_aus_html(quelle: str, mit_zeilen: bool) -> str:
+    if mit_zeilen:
+        quelle = re.sub(r"<\s*(br|/p|/div|/td|/tr|/li|/h\d)[^>]*>", "\n", quelle, flags=re.I)
+    text = html.unescape(re.sub(r"<[^>]+>", " ", quelle)).replace("\xa0", " ")
+    if mit_zeilen:
+        return "\n".join(re.sub(r"[ \t]+", " ", z).strip() for z in text.splitlines())
+    return re.sub(r"\s+", " ", text)
+
+
+def _bereinigen(name: str) -> str:
+    name = name.strip(" .,:;\"'„“”‚‘’*_")
+    return name if 1 < len(name) <= 120 else ""
+
+
+def _absender_finden(msg, html_text: str, plain_text: str) -> str:
+    try:
+        betreff = str(make_header(decode_header(msg.get("Subject", ""))))
+    except Exception:
+        betreff = msg.get("Subject", "") or ""
+    quellen = [q for q in (html_text, plain_text) if q]
+    for quelle in quellen:
+        fliesstext = _text_aus_html(quelle, mit_zeilen=False)
+        for muster in _MUSTER_FLIESSTEXT:
+            treffer = muster.search(fliesstext)
+            if treffer and (name := _bereinigen(treffer.group(1))):
+                return name
+        treffer = _MUSTER_ZEILE.search(_text_aus_html(quelle, mit_zeilen=True))
+        if treffer and (name := _bereinigen(treffer.group(1))):
+            return name
+    for muster in _MUSTER_FLIESSTEXT:
+        treffer = muster.search(betreff)
+        if treffer and (name := _bereinigen(treffer.group(1))):
+            return name
+    vorschau = _text_aus_html(quellen[0], mit_zeilen=False)[:400] if quellen else ""
+    _LOGGER.info(
+        "Kein Absender erkannt (Betreff: %s). Textanfang: %s", betreff, vorschau
+    )
+    return "Unbekannt"
 
 
 class BriefCoordinator(DataUpdateCoordinator[list[dict]]):
@@ -102,10 +151,7 @@ class BriefCoordinator(DataUpdateCoordinator[list[dict]]):
             elif typ.startswith("image/"):
                 bilder.append(inhalt)
 
-        klartext = html.unescape(re.sub(r"<[^>]+>", " ", html_text or plain_text))
-        klartext = re.sub(r"\s+", " ", klartext)
-        treffer = re.search(r"Brief von (.+?) ist unterwegs", klartext)
-        absender = treffer.group(1).strip() if treffer else "Unbekannt"
+        absender = _absender_finden(msg, html_text, plain_text)
 
         if not bilder and html_text:
             for url in re.findall(r'<img[^>]+src="(https?://[^"]+)"', html_text, re.I)[:5]:
