@@ -1,0 +1,190 @@
+# Briefkasten-Pop-up mit Bestätigung und Mitternachts-Reset
+#
+# Ergänzt die Briefankündigung um den echten Briefkasten: Ein Sensor am
+# Briefkastendeckel (z. B. Zigbee-Vibrationssensor über Zigbee2MQTT) meldet,
+# dass Post eingeworfen wurde. Auf einem Wand-Tablet öffnet sich dann ein
+# Pop-up (browser_mod), das sich nur über „Post geholt ✓“ schließen lässt.
+#
+# Voraussetzungen:
+#   - browser_mod, card-mod und vertical-stack-in-card (über HACS)
+#   - Helfer input_boolean.briefkasten_post_da („Briefkasten Post da“)
+#     anlegen: Einstellungen → Geräte & Dienste → Helfer → Schalter
+#
+# Anpassen:
+#   - sensor.briefkasten_action  → Aktions-Sensor deines Briefkasten-Sensors
+#   - switch.tablet_bildschirm   → Bildschirm-Schalter deines Tablets (oder Aktion entfernen)
+#   - DEINE_BROWSER_ID           → Browser-ID des Tablets (browser_mod)
+#   - notify.pushover            → dein Benachrichtigungsdienst
+#
+# Jeder Block wird als eigene Automation bzw. eigenes Skript angelegt
+# (im Editor ⋮ → In YAML bearbeiten → einfügen).
+
+# ---------------------------------------------------------------------------
+# Skript: Post bestätigen
+# ---------------------------------------------------------------------------
+alias: Briefkasten – Post bestätigen
+description: Setzt den Merker „Briefkasten Post da“ zurück und schließt das Briefkasten-Pop-up auf dem Tablet.
+icon: mdi:check-circle
+mode: single
+sequence:
+  - action: input_boolean.turn_off
+    target:
+      entity_id: input_boolean.briefkasten_post_da
+  - action: browser_mod.close_popup
+    continue_on_error: true
+    data:
+      browser_id:
+        - DEINE_BROWSER_ID
+
+---
+# ---------------------------------------------------------------------------
+# Automation: Pop-up auf dem Tablet
+# ---------------------------------------------------------------------------
+alias: Pop-up Briefkasten geöffnet
+description: >-
+  Öffnet auf dem Tablet ein Pop-up, wenn der Briefkasten-Deckel bewegt wurde.
+  Das Pop-up lässt sich nur über „Post geholt ✓“ schließen; das setzt auch den
+  Merker zurück. Solange der Merker an ist, kommt kein weiteres Pop-up.
+triggers:
+  - trigger: state
+    entity_id: sensor.briefkasten_action
+    to: movement
+conditions:
+  - condition: state
+    entity_id: input_boolean.briefkasten_post_da
+    state: "off"
+actions:
+  - action: input_boolean.turn_on
+    target:
+      entity_id: input_boolean.briefkasten_post_da
+  - action: switch.turn_on
+    target:
+      entity_id: switch.tablet_bildschirm
+  - action: browser_mod.popup
+    data:
+      browser_id:
+        - DEINE_BROWSER_ID
+      title: Briefkasten
+      dismissable: false
+      autoclose: false
+      content:
+        type: custom:vertical-stack-in-card
+        cards:
+          - type: markdown
+            content: >-
+              <center><b>Der Briefkasten wurde um {{ now().strftime('%H:%M') }} Uhr geöffnet.</b></center>
+          - type: button
+            entity: input_boolean.briefkasten_post_da
+            icon: mdi:mailbox-up
+            show_name: false
+            show_state: false
+            icon_height: 160px
+            tap_action:
+              action: none
+            hold_action:
+              action: none
+          - type: markdown
+            content: <center>Bitte Post holen und anschließend bestätigen.</center>
+          - type: button
+            name: Post geholt ✓
+            icon: mdi:check-circle
+            show_name: true
+            show_icon: true
+            show_state: false
+            icon_height: 40px
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.sequence
+                data:
+                  sequence:
+                    - service: script.briefkasten_post_bestaetigen
+                    - service: browser_mod.close_popup
+            hold_action:
+              action: none
+            card_mod:
+              style: |
+                ha-card {
+                  background: #3cb043 !important;
+                  border-radius: 45px !important;
+                  height: 90px !important;
+                  flex-direction: row !important;
+                  justify-content: center !important;
+                  gap: 14px;
+                  margin: 8px 12px 4px 12px;
+                  color: #ffffff !important;
+                  --state-icon-color: #ffffff;
+                  --paper-item-icon-color: #ffffff;
+                  cursor: pointer;
+                }
+                span {
+                  font-size: 26px !important;
+                  font-weight: 700 !important;
+                  color: #ffffff !important;
+                }
+                ha-state-icon, ha-icon {
+                  color: #ffffff !important;
+                }
+        card_mod:
+          style: |
+            ha-card {
+              border: 5px solid #d32f2f !important;
+              border-radius: 24px !important;
+              padding: 12px 8px !important;
+              box-shadow: 0 0 18px rgba(211,47,47,0.45) !important;
+            }
+      style: |
+        :host, ha-dialog, ha-wa-dialog, ha-adaptive-dialog, wa-dialog {
+          --mdc-dialog-min-width: 600px;
+          --mdc-dialog-max-width: 600px;
+          --dialog-content-padding: 12px;
+          transform: translateY(12vh) !important;
+        }
+mode: single
+max_exceeded: silent
+
+---
+# ---------------------------------------------------------------------------
+# Automation: Merker um Mitternacht zurücksetzen
+# ---------------------------------------------------------------------------
+# Absicherung: Wird das Pop-up nicht über „Post geholt ✓“ geschlossen
+# (z. B. Tablet-Neustart), bleibt der Merker sonst an und blockiert alle
+# weiteren Pop-ups.
+alias: Briefkasten – Merker um Mitternacht zurücksetzen
+description: >-
+  Setzt den Merker input_boolean.briefkasten_post_da täglich um Mitternacht
+  zurück, falls das Pop-up nicht über „Post geholt“ bestätigt wurde.
+triggers:
+  - trigger: time
+    at: "00:00:00"
+conditions:
+  - condition: state
+    entity_id: input_boolean.briefkasten_post_da
+    state: "on"
+actions:
+  - action: input_boolean.turn_off
+    target:
+      entity_id: input_boolean.briefkasten_post_da
+mode: single
+
+---
+# ---------------------------------------------------------------------------
+# Automation: Pushover-Meldung beim Öffnen des Deckels
+# ---------------------------------------------------------------------------
+alias: Briefkasten Deckel geöffnet – Pushover
+description: >-
+  Sendet eine Pushover-Nachricht, wenn der Briefkasten-Sensor eine Bewegung
+  (Deckel geöffnet) meldet. 30 s Sperrzeit gegen Mehrfachmeldungen.
+triggers:
+  - trigger: state
+    entity_id: sensor.briefkasten_action
+    to: movement
+actions:
+  - action: notify.pushover
+    data:
+      title: Briefkasten
+      message: Briefkasten Deckel geöffnet
+  - delay:
+      seconds: 30
+mode: single
+max_exceeded: silent
