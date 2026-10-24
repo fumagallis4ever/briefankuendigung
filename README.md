@@ -130,6 +130,17 @@ content: |-
   </table>
 ```
 
+### Beispiel: Briefkasten-Pop-up auf dem Tablet
+
+Wer zusätzlich einen Sensor am Briefkastendeckel hat, findet in [`examples/briefkasten-popup.yaml`](examples/briefkasten-popup.yaml) ein komplettes Beispiel:
+
+- Pop-up auf dem Wand-Tablet (browser_mod), das sich nur über **„Post geholt ✓“** schließen lässt
+- Merker `input_boolean.briefkasten_post_da`, damit nicht bei jedem Einwurf ein neues Pop-up kommt
+- Automatischer Reset des Merkers um **Mitternacht**, falls das Pop-up nicht bestätigt wurde (z. B. nach einem Tablet-Neustart)
+- Pushover-Meldung beim Öffnen des Deckels
+
+Die Platzhalter am Anfang der Datei an dein System anpassen.
+
 ## Hinweise
 
 - Abfrageintervall: alle 5 Minuten.
