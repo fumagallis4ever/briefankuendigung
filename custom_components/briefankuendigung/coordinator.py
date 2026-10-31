@@ -29,6 +29,7 @@ _MUSTER_FLIESSTEXT = [
     re.compile(r"Sendung von\s+(.+?)\s+(?:ist|wird|kommt|wurde)\b", re.I),
 ]
 _MUSTER_ZEILE = re.compile(r"^\s*Absender\s*:\s*(.+?)\s*$", re.I | re.M)
+OHNE_ABSENDER = "Ohne Absender"
 
 
 def _text_aus_html(quelle: str, mit_zeilen: bool) -> str:
@@ -68,7 +69,7 @@ def _absender_finden(msg, html_text: str, plain_text: str) -> str:
     _LOGGER.info(
         "Kein Absender erkannt (Betreff: %s). Textanfang: %s", betreff, vorschau
     )
-    return "Unbekannt"
+    return OHNE_ABSENDER
 
 
 class BriefCoordinator(DataUpdateCoordinator[list[dict]]):
@@ -90,6 +91,9 @@ class BriefCoordinator(DataUpdateCoordinator[list[dict]]):
         if daten:
             self.gesehen = daten.get("gesehen", [])
             self.briefe = daten.get("briefe", [])
+            for brief in self.briefe:
+                if brief.get("absender") == "Unbekannt":
+                    brief["absender"] = OHNE_ABSENDER
             self._erster_lauf = False
 
     async def _async_update_data(self) -> list[dict]:
