@@ -144,7 +144,7 @@ Die Platzhalter am Anfang der Datei an dein System anpassen.
 ## Hinweise
 
 - Abfrageintervall: alle 5 Minuten.
-- Steht der Absender nicht im Text der Ankündigung, zeigt der Sensor „Unbekannt“. Er ist dann meist auf dem Umschlagbild zu sehen.
+- Steht der Absender nicht im Text der Ankündigung, zeigt der Sensor „Ohne Absender“. Steht einer auf dem Umschlag, ist er auf dem Umschlagbild zu sehen.
 - Dieses Projekt steht in keiner Verbindung zur Deutschen Post, zu WEB.DE oder GMX.
 
 ---
