@@ -7,7 +7,7 @@ import logging
 import os
 import re
 import urllib.request
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
@@ -16,7 +16,17 @@ from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
-from .const import ABSENDER, CONF_SERVER, DOMAIN, EVENT_NEU, MAX_BRIEFE, SCAN_INTERVAL
+from .const import (
+    ABSENDER,
+    CONF_AUFBEWAHRUNG,
+    CONF_SERVER,
+    DATUM_FORMAT,
+    DEFAULT_AUFBEWAHRUNG,
+    DOMAIN,
+    EVENT_NEU,
+    MAX_BRIEFE,
+    SCAN_INTERVAL,
+)
 
 _LOGGER = logging.getLogger(__name__)
 MONATE = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -85,6 +95,21 @@ class BriefCoordinator(DataUpdateCoordinator[list[dict]]):
         self.gesehen: list[str] = []
         self.briefe: list[dict] = []
         self._erster_lauf = True
+        konto = re.sub(r"[^a-z0-9]", "_", entry.title.split("@")[0].lower())
+        self.datei_praefix = f"brief_{konto}_"
+
+    @property
+    def aufbewahrung_tage(self) -> int:
+        return int(self.entry.options.get(CONF_AUFBEWAHRUNG, DEFAULT_AUFBEWAHRUNG))
+
+    def eingang(self, brief: dict) -> datetime | None:
+        """Zeitpunkt der Ankündigung als lokale Zeit."""
+        try:
+            return datetime.strptime(brief.get("datum") or "", DATUM_FORMAT).replace(
+                tzinfo=dt_util.get_default_time_zone()
+            )
+        except ValueError:
+            return None
 
     async def async_load(self) -> None:
         daten = await self.store.async_load()
@@ -107,7 +132,8 @@ class BriefCoordinator(DataUpdateCoordinator[list[dict]]):
         self.gesehen = (self.gesehen + neue_uids)[-300:]
         if neue_briefe:
             self.briefe.extend(neue_briefe)
-            await self.hass.async_add_executor_job(self._alte_entfernen)
+        await self.hass.async_add_executor_job(self._alte_entfernen)
+        if neue_briefe:
             if not self._erster_lauf:
                 for brief in neue_briefe:
                     self.hass.bus.async_fire(EVENT_NEU, {**brief, "konto": self.entry.title})
@@ -168,8 +194,7 @@ class BriefCoordinator(DataUpdateCoordinator[list[dict]]):
         datei, bild = None, None
         if bilder:
             os.makedirs(self.bild_ordner, exist_ok=True)
-            konto = re.sub(r"[^a-z0-9]", "_", self.entry.title.split("@")[0].lower())
-            datei = f"brief_{konto}_{uid}.jpg"
+            datei = f"{self.datei_praefix}{uid}.jpg"
             pfad = os.path.join(self.bild_ordner, datei)
             with open(pfad, "wb") as f:
                 f.write(max(bilder, key=len))
@@ -182,15 +207,49 @@ class BriefCoordinator(DataUpdateCoordinator[list[dict]]):
 
         return {
             "absender": absender,
-            "datum": datum.strftime("%d.%m.%Y %H:%M"),
+            "datum": datum.strftime(DATUM_FORMAT),
             "bild": bild,
             "datei": datei,
         }
 
     def _alte_entfernen(self) -> None:
-        while len(self.briefe) > MAX_BRIEFE:
-            alt = self.briefe.pop(0)
-            if alt.get("datei"):
-                pfad = os.path.join(self.bild_ordner, alt["datei"])
-                if os.path.exists(pfad):
+        """Briefe und Umschlagbilder nach Ablauf der Aufbewahrungsfrist löschen."""
+        grenze = dt_util.now() - timedelta(days=self.aufbewahrung_tage)
+        behalten = []
+        for brief in self.briefe:
+            eingang = self.eingang(brief)
+            if eingang is not None and eingang < grenze:
+                self._bild_loeschen(brief)
+            else:
+                behalten.append(brief)
+        while len(behalten) > MAX_BRIEFE:
+            self._bild_loeschen(behalten.pop(0))
+        self.briefe = behalten
+
+        # Verwaiste Bilder dieses Postfachs (z. B. aus älteren Versionen) aufräumen
+        if not os.path.isdir(self.bild_ordner):
+            return
+        bekannt = {b.get("datei") for b in self.briefe}
+        grenze_ts = grenze.timestamp()
+        for name in os.listdir(self.bild_ordner):
+            rest = name.removeprefix(self.datei_praefix)
+            if rest == name or not re.fullmatch(r"\d+\.jpg", rest) or name in bekannt:
+                continue
+            pfad = os.path.join(self.bild_ordner, name)
+            try:
+                if os.path.getmtime(pfad) < grenze_ts:
                     os.remove(pfad)
+                    _LOGGER.debug("Verwaistes Umschlagbild gelöscht: %s", name)
+            except OSError as err:
+                _LOGGER.warning("Bild %s konnte nicht gelöscht werden: %s", name, err)
+
+    def _bild_loeschen(self, brief: dict) -> None:
+        if not brief.get("datei"):
+            return
+        pfad = os.path.join(self.bild_ordner, brief["datei"])
+        try:
+            if os.path.exists(pfad):
+                os.remove(pfad)
+                _LOGGER.debug("Umschlagbild gelöscht: %s", brief["datei"])
+        except OSError as err:
+            _LOGGER.warning("Bild %s konnte nicht gelöscht werden: %s", brief["datei"], err)

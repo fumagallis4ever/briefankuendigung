@@ -8,8 +8,9 @@ Holt die **Briefankündigung der Deutschen Post** aus deinem WEB.DE- oder GMX-Po
 
 - Einrichtung komplett über die Oberfläche, kein YAML nötig
 - Mehrere Postfächer möglich (z. B. für jedes Familienmitglied eins)
-- Sensor mit dem Absender des letzten Briefs und einer Liste der letzten 10 Ankündigungen
+- Sensor mit dem Absender des letzten Briefs und einer Liste der Ankündigungen der letzten 14 Tage
 - Bild-Entität mit dem Umschlagbild für Dashboards
+- Umschlagbilder werden nach **14 Tagen automatisch gelöscht** (einstellbar)
 - Event `briefankuendigung_neu` für eigene Automationen, z. B. Push-Nachrichten
 - Postfach wird nur gelesen, Mails werden nicht als gelesen markiert oder gelöscht
 
@@ -48,13 +49,17 @@ Den Ordner `custom_components/briefankuendigung` in den Ordner `config/custom_co
 
 Für weitere Postfächer die Integration einfach noch einmal hinzufügen.
 
+### Aufbewahrung
+
+Ankündigungen und Umschlagbilder werden standardmäßig **14 Tage** aufbewahrt und danach automatisch gelöscht – auch die Bilddateien unter `/local/briefe/`. Die Dauer lässt sich je Postfach ändern: *Einstellungen → Geräte & Dienste → Briefankündigung → ⚙ Konfigurieren*.
+
 ## Entitäten
 
 Diese Entitäten legt die Integration bei der Einrichtung **automatisch** an, du musst nichts selbst erstellen:
 
 | Entität | Beschreibung |
 |---|---|
-| `sensor.briefankundigung_letzter_brief` | Absender des zuletzt angekündigten Briefs. Attribute: `datum`, `bild`, `anzahl`, `briefe` (Liste der letzten 10) |
+| `sensor.briefankundigung_letzter_brief` | Absender des zuletzt angekündigten Briefs. Attribute: `datum`, `bild`, `anzahl`, `aufbewahrung_tage`, `briefe` (Liste mit `absender`, `datum`, `bild`, `loeschung`) |
 | `image.briefankundigung_umschlag` | Umschlagbild des letzten Briefs |
 
 Richtest du mehrere Postfächer ein, bekommen die weiteren Entitäten die Endung `_2`, `_3` usw. Die genauen Namen findest du unter *Einstellungen → Geräte & Dienste → Briefankündigung → Entitäten*.
@@ -151,7 +156,7 @@ Die Platzhalter am Anfang der Datei an dein System anpassen.
 
 ## English summary
 
-Home Assistant integration that reads the *Briefankündigung* (letter announcement) service of Deutsche Post from a WEB.DE or GMX mailbox via IMAP. It provides a sensor with the sender of the latest announced letter (plus the last 10 as attributes), an image entity with the envelope scan, and fires a `briefankuendigung_neu` event for each new announcement. Setup is done in the UI; multiple mailboxes are supported. Only available in Germany.
+Home Assistant integration that reads the *Briefankündigung* (letter announcement) service of Deutsche Post from a WEB.DE or GMX mailbox via IMAP. It provides a sensor with the sender of the latest announced letter (plus all announcements of the last 14 days as attributes; images are deleted automatically after a configurable retention period), an image entity with the envelope scan, and fires a `briefankuendigung_neu` event for each new announcement. Setup is done in the UI; multiple mailboxes are supported. Only available in Germany.
 
 ## Lizenz
 
