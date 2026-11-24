@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -37,15 +39,23 @@ class LetzterBriefSensor(CoordinatorEntity[BriefCoordinator], SensorEntity):
             "datum": _nur_datum(letzter.get("datum")),
             "bild": letzter.get("bild"),
             "anzahl": len(briefe),
+            "aufbewahrung_tage": self.coordinator.aufbewahrung_tage,
             "briefe": [
                 {
                     "absender": b.get("absender"),
                     "datum": _nur_datum(b.get("datum")),
                     "bild": b.get("bild"),
+                    "loeschung": self._loeschung(b),
                 }
                 for b in reversed(briefe)
             ],
         }
+
+    def _loeschung(self, brief: dict):
+        eingang = self.coordinator.eingang(brief)
+        if eingang is None:
+            return None
+        return (eingang + timedelta(days=self.coordinator.aufbewahrung_tage)).strftime("%d.%m.%Y")
 
 
 def _nur_datum(wert):

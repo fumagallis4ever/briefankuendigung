@@ -18,5 +18,16 @@
     "abort": {
       "already_configured": "Dieses Postfach ist bereits eingerichtet."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Aufbewahrung",
+        "description": "Wie lange Ankündigungen und Umschlagbilder gespeichert bleiben. Ältere werden automatisch gelöscht.",
+        "data": {
+          "aufbewahrung_tage": "Aufbewahrung (Tage)"
+        }
+      }
+    }
   }
 }

@@ -18,5 +18,16 @@
     "abort": {
       "already_configured": "Dieses Postfach ist bereits eingerichtet."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Retention",
+        "description": "How long announcements and envelope images are kept. Older ones are deleted automatically.",
+        "data": {
+          "aufbewahrung_tage": "Retention (days)"
+        }
+      }
+    }
   }
 }
